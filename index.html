@@ -257,14 +257,18 @@ select{cursor:pointer}
 
 /* the report sheet */
 .sheet{background:#fff;border:1px solid #e2d4d5;border-radius:16px;overflow:hidden;box-shadow:0 22px 55px rgba(74,10,20,.15);max-width:940px;margin:0 auto;animation:entryIn .5s}
-.sheet-head{background:
-    repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 2px, transparent 2px 14px),
-    linear-gradient(135deg,#4a0a14,#8e0f1c 60%,#c10327);
-  color:#fff;padding:26px 36px;display:flex;gap:20px;align-items:center;border-bottom:4px solid var(--brand-navy)}
-.sheet-head .crest svg{width:58px;height:auto;flex:none}
-.sheet-head .crest img{width:58px;height:58px;object-fit:contain;background:#fff;border-radius:8px;padding:4px;flex:none}
-.sh-title h2{font-family:var(--disp);font-size:1.4rem;line-height:1.2}
-.sh-title p{font-size:.78rem;color:#f6e0e2;margin-top:3px}
+.sheet-head{background:linear-gradient(100deg,#9d1519,#ae141c 45%,#bd131e);
+  color:#fff;padding:18px 30px;display:flex;gap:18px;align-items:center;border-bottom:4px solid var(--brand-navy)}
+.sheet-head .crest svg{width:68px;height:auto;flex:none}
+.sheet-head .crest img{width:68px;height:68px;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));flex:none}
+.sh-title{min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.sh-college{font-family:var(--body);font-weight:800;font-size:1.3rem;line-height:1.15;letter-spacing:.01em;color:#fff}
+.sh-college span{font-weight:500;font-size:.88em}
+.sh-l2{font-size:.7rem;font-weight:500;color:#fff;margin-top:5px;white-space:nowrap}
+.sh-l3{font-size:.62rem;color:rgba(255,255,255,.92);margin-top:2px;white-space:nowrap}
+.sh-badge{margin-left:auto;text-align:center;border:1px solid rgba(255,255,255,.6);border-radius:10px;padding:10px 14px;background:rgba(255,255,255,.1);flex:none;max-width:190px}
+.sh-badge span{display:block;font-family:var(--disp);font-weight:700;font-size:.95rem;line-height:1.25;color:#fff}
+@media(max-width:700px){.sh-l2,.sh-l3{white-space:normal}.sh-badge{margin-left:0}}
 .sh-ref{color:#fff!important;letter-spacing:.06em;font-weight:600}
 .gen-stamp{margin-left:auto;text-align:right;font-size:.62rem;color:#f1c4c8;letter-spacing:.14em;flex:none}
 .gen-stamp b{display:block;color:#fff;font-size:.82rem;letter-spacing:.02em;margin-top:2px}
@@ -1019,9 +1023,11 @@ function buildSheetHTML(d){
     <header class="sheet-head">
       <div class="crest crest-slot"></div>
       <div class="sh-title">
-        <p>Guru Nanak College (Autonomous), Velachery Road, Chennai – 600 042</p>
-        <h2>Faculty ICT Usage Visual Report</h2>
+        <h1 class="sh-college">GURU NANAK COLLEGE <span>(AUTONOMOUS)</span></h1>
+        <p class="sh-l2">A Sikh Minority Institution, Unit of Guru Nanak Education Society</p>
+        <p class="sh-l3">Affiliated to University of Madras, Approved by AICTE | Accredited at A++ Grade by NAAC</p>
       </div>
+      <div class="sh-badge"><span>Faculty ICT Usage Visual Report</span></div>
     </header>
     <div class="sheet-body">
       <div class="rp-section">
