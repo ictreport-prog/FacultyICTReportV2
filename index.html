@@ -23,7 +23,7 @@
 /* ══════════════ 1 · FOUNDATIONS ══════════════ */
 :root{
   --navy-900:#4a0a14; --navy-800:#8e0f1c; --navy-700:#c10327; --navy-600:#d9304f;
-  --gold-500:#e8a020; --gold-400:#f4b942; --gold-100:#fdf3dc;
+  --brand-navy:#1a2050; --gold-500:#e8a020; --gold-400:#f4b942; --gold-100:#fdf3dc;
   --ink:#231a1c; --muted:#665a5c; --line:#e8dcdd; --line-soft:#f1e9e9;
   --card:#ffffff;
   --radius:14px;
@@ -260,12 +260,12 @@ select{cursor:pointer}
 .sheet-head{background:
     repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 2px, transparent 2px 14px),
     linear-gradient(135deg,#4a0a14,#8e0f1c 60%,#c10327);
-  color:#fff;padding:26px 36px;display:flex;gap:20px;align-items:center;border-bottom:4px solid var(--gold-500)}
+  color:#fff;padding:26px 36px;display:flex;gap:20px;align-items:center;border-bottom:4px solid var(--brand-navy)}
 .sheet-head .crest svg{width:58px;height:auto;flex:none}
 .sheet-head .crest img{width:58px;height:58px;object-fit:contain;background:#fff;border-radius:8px;padding:4px;flex:none}
 .sh-title h2{font-family:var(--disp);font-size:1.4rem;line-height:1.2}
 .sh-title p{font-size:.78rem;color:#f6e0e2;margin-top:3px}
-.sh-ref{color:var(--gold-400)!important;letter-spacing:.06em;font-weight:600}
+.sh-ref{color:#fff!important;letter-spacing:.06em;font-weight:600}
 .gen-stamp{margin-left:auto;text-align:right;font-size:.62rem;color:#f1c4c8;letter-spacing:.14em;flex:none}
 .gen-stamp b{display:block;color:#fff;font-size:.82rem;letter-spacing:.02em;margin-top:2px}
 .gen-stamp span{display:block;margin-top:1px}
@@ -275,7 +275,7 @@ select{cursor:pointer}
 .rp-section:first-child{margin-top:0}
 .rp-h{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;border-bottom:1px solid var(--line-soft);padding-bottom:6px}
 /* Reduced spacing: margin-bottom 14→10, padding-bottom 9→6 */
-.rp-h .bar{width:8px;height:20px;background:var(--gold-500);border-radius:2px;align-self:center;flex:none}
+.rp-h .bar{width:8px;height:20px;background:var(--brand-navy);border-radius:2px;align-self:center;flex:none}
 .rp-h h3{font-family:var(--disp);font-size:1.05rem;color:var(--navy-900)}
 /* Reduced from 1.15rem to 1.05rem for better PDF page fitting */
 .rp-sub{margin-left:auto;font-size:.72rem;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
@@ -293,14 +293,14 @@ select{cursor:pointer}
 .stat-tile b{font-family:var(--disp);font-size:1.65rem;color:var(--navy-800);display:block;line-height:1.1}
 .stat-tile span{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:800}
 
-.tool-card{border:1px solid #ebe0e1;border-left:4px solid var(--gold-500);border-radius:11px;padding:16px 18px;margin-bottom:14px;background:#fdfefe}
+.tool-card{border:1px solid #ebe0e1;border-left:4px solid var(--brand-navy);border-radius:11px;padding:16px 18px;margin-bottom:14px;background:#fdfefe}
 .tc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.tc-idx{font-family:var(--disp);font-weight:800;background:var(--gold-500);color:var(--navy-900);width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:.85rem;flex:none}
+.tc-idx{font-family:var(--disp);font-weight:800;background:var(--brand-navy);color:#fff;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:.85rem;flex:none}
 .tc-head h4{font-family:var(--disp);font-size:1.06rem;color:var(--navy-900)}
 .tag{font-size:.6rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:6px}
 .tag-cat{background:#fbebec;color:var(--navy-700)}
 .tag-sync{background:var(--navy-800);color:#fff}
-.tag-async{background:var(--gold-500);color:var(--navy-900)}
+.tag-async{background:var(--brand-navy);color:#fff}
 .tc-purpose{color:var(--ink);font-size:.89rem;margin:10px 0 0}
 .tc-meta{display:flex;align-items:center;gap:14px;margin-top:13px}
 .score-bubble{font-family:var(--disp);font-weight:800;font-size:1.1rem;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;border:2.5px solid}
@@ -524,7 +524,7 @@ select{cursor:pointer}
           <div class="legend">
             <span style="font-size:.62rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Delivery Mode</span>
             <span><i style="background:var(--navy-800)"></i>Synchronous · <b id="statSync">0</b></span>
-            <span><i style="background:var(--gold-500)"></i>Asynchronous · <b id="statAsync">0</b></span>
+            <span><i style="background:var(--brand-navy)"></i>Asynchronous · <b id="statAsync">0</b></span>
           </div>
         </div>
         <button class="btn btn-primary" id="btnPulseGen" type="button" style="width:100%">⚡ Generate Report</button>
@@ -876,7 +876,7 @@ function updateLiveStats(){
   $('#statAvg').textContent = els.length ? `${scored.length}/${els.length}` : '—';
   const total = sync + asn, deg = total ? (sync / total) * 360 : 0;
   $('#modeDonut').style.background = total
-    ? `conic-gradient(var(--navy-800) 0deg ${deg}deg, var(--gold-500) ${deg}deg 360deg)`
+    ? `conic-gradient(var(--navy-800) 0deg ${deg}deg, var(--brand-navy) ${deg}deg 360deg)`
     : 'conic-gradient(#e7dddd 0deg 360deg)';
   $('#donutLabel').textContent = total ? Math.round((sync / total) * 100) + '%' : '—';
 }
@@ -1032,9 +1032,9 @@ function buildSheetHTML(d){
         <div class="rp-h"><span class="bar"></span><h3>Session Snapshot</h3></div>
         <div class="stat-strip">
           ${tile('ICT Interventions', entries.length, '#8e0f1c')}
-          ${tile('Effectiveness', avg != null ? avg.toFixed(1) + '/10' : 'Pending feedback', avg != null ? scoreColor(avg) : '#e8a020')}
+          ${tile('Effectiveness', avg != null ? avg.toFixed(1) + '/10' : 'Pending feedback', avg != null ? scoreColor(avg) : '#1a2050')}
           ${tile('Synchronous', sync, '#c10327')}
-          ${tile('Asynchronous', asn, '#f4b942')}
+          ${tile('Asynchronous', asn, '#1a2050')}
         </div>
       </div>
       <div class="rp-section">
@@ -1042,7 +1042,7 @@ function buildSheetHTML(d){
           <span class="rp-sub">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} recorded</span></div>
         ${toolsHTML}
       </div>
-      <div class="rp-section" data-force-break="true">
+      <div class="rp-section">
         <div class="rp-h"><span class="bar"></span><h3>Visual Analytics</h3></div>
         <div class="charts-row">
           <div class="chart-box"><div class="chart-inner"><canvas id="cBar"></canvas></div></div>
@@ -1110,7 +1110,7 @@ function initCharts(d){
       type: 'doughnut',
       data: {
         labels: ['Synchronous', 'Asynchronous'],
-        datasets: [{ data: [sync, asn], backgroundColor: ['#8e0f1c', '#e8a020'], borderColor: '#fff', borderWidth: 3, hoverOffset: 8 }]
+        datasets: [{ data: [sync, asn], backgroundColor: ['#8e0f1c', '#1a2050'], borderColor: '#fff', borderWidth: 3, hoverOffset: 8 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '58%',
@@ -1793,7 +1793,7 @@ async function downloadPDF(){
       const pxToMm = usableW / rect.width;
       const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
       const h = canvas.height * usableW / canvas.width;
-      const img = canvas.toDataURL('image/png');
+      const img = canvas.toDataURL('image/jpeg', 0.92);
       rendered.push({ img, h, rect, links, pxToMm, forceBreak: el.dataset && el.dataset.forceBreak === 'true', mergeNext: el.dataset && el.dataset.mergeNext === 'true' });
     }
 
@@ -1817,7 +1817,7 @@ async function downloadPDF(){
         ctx.drawImage(imgTop, 0, 0);
         ctx.drawImage(imgBottom, 0, imgTop.height + gapPx);
         rendered.splice(i, 2, {
-          img: canvas.toDataURL('image/png'),
+          img: canvas.toDataURL('image/jpeg', 0.92),
           h: top.h + gap + bottom.h,
           rect: top.rect,
           links: [], // neither section contains proof/document links
@@ -1864,12 +1864,12 @@ async function downloadPDF(){
       if(page.slice){
         const rb = page.blocks[0];
         let drawnSoFar = 0;
-        pdf.addImage(rb.img, 'PNG', marginX, marginTop, usableW, rb.h);
+        pdf.addImage(rb.img, 'JPEG', marginX, marginTop, usableW, rb.h);
         placeLinks(rb.links, rb.rect, rb.pxToMm, pageNum, marginTop, marginTop, marginTop + usableH);
         drawnSoFar = usableH;
         while(drawnSoFar < rb.h){
           pdf.addPage(); pageNum++;
-          pdf.addImage(rb.img, 'PNG', marginX, marginTop - drawnSoFar, usableW, rb.h);
+          pdf.addImage(rb.img, 'JPEG', marginX, marginTop - drawnSoFar, usableW, rb.h);
           placeLinks(rb.links, rb.rect, rb.pxToMm, pageNum, marginTop - drawnSoFar, marginTop, marginTop + usableH);
           drawnSoFar += usableH;
         }
@@ -1882,7 +1882,7 @@ async function downloadPDF(){
         // sits at the bottom, same as any normal printed document.
         let y = marginTop;
         page.blocks.forEach(rb => {
-          pdf.addImage(rb.img, 'PNG', marginX, y, usableW, rb.h);
+          pdf.addImage(rb.img, 'JPEG', marginX, y, usableW, rb.h);
           placeLinks(rb.links, rb.rect, rb.pxToMm, pageNum, y, null, null);
           y += rb.h + gap;
         });
