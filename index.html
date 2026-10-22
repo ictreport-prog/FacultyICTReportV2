@@ -647,10 +647,10 @@ function injectCrests(){
 /* ---------- Schools & Departments (Guru Nanak College) ----------
    Taken directly from the official department list on the college site. */
 const SCHOOL_DEPTS = {
-  'School of Humanities': ['B.A. Defence and Strategic Studies','B.A. Economics','B.A. Sociology','B.A. Political Science','M.A. Defence and Strategic Studies','M.A. Economics','Master of Social Work'],
+  'School of Humanities': ['B.A. Defence and Strategic Studies','B.A. Economics','B.A. Sociology','B.A. Political Science','M.A. Defence and Strategic Studies','M.A. Economics','M.Phil. Economics','Ph.D. Economics','Ph.D. Defence and Strategic Studies','Master of Social Work'],
   'School of Management': ['B.B.A.','B.B.A. Retail Management','B.Com Marketing Management','B.Com. Bank Management','M.B.A'],
-  'School of Information Technology': ['B.C.A.','B.Com. Computer Applications','B.Sc. Computer Science','B.Sc. CS-AI','B.Sc. Data Analytics','B.Sc. Information Technology','B.Sc. Visual Communication','M.C.A.','M.Sc. CS-AI'],
-  'School of Commerce': ['B.Com. Accounting and Finance','B.Com. Corporate Secretaryship','B.Com. General','B.Com. Honours','B.Com. Information Systems Management','B.Com. Professional Accounting','M.Com'],
+  'School of Information Technology': ['B.C.A.','B.Sc. Computer Science','B.Sc. CS-AI','B.Sc. Data Analytics','B.Sc. Information Technology','B.Sc. Visual Communication','M.C.A.','M.Sc. CS-AI'],
+  'School of Commerce': ['B.Com. Accounting and Finance','B.Com. Computer Applications','B.Com. Corporate Secretaryship','B.Com. General','B.Com. Honours','B.Com. Information Systems Management','B.Com. Professional Accounting','M.Com. General'],
   'School of Sciences': ['B.Sc. Advanced Zoology','B.Sc. Biotechnology','B.Sc. Chemistry','B.Sc. Mathematics','B.Sc. Physics','B.Sc. Plant Biology','M.Sc. Chemistry','M.Sc. Mathematics','M.Sc. Zoology'],
   'School of Languages': ['B.A. English','English','French','Hindi','Sanskrit','Tamil']
 };
@@ -670,6 +670,48 @@ function batchOptionsHTML(){
     out += `<option>${y} – ${y + 3}</option>`;
   }
   return out;
+}
+
+/* ---------- Programme level (UG / PG / Research) -> Batch, Semester, Year ---------- */
+function programmeLevel(dept){
+  if(/^(M\.Phil\.|Ph\.D\.)/i.test(dept)) return 'research';
+  if(/^(M\.A\.|M\.Sc\.|M\.Com|M\.B\.A|M\.C\.A|Master of)/i.test(dept)) return 'pg';
+  return 'ug';
+}
+function levelBatchHTML(level){
+  if(level === 'pg'){            // 2-year master's programmes
+    let out = '';
+    for(let y = 2022; y < 2031; y++) out += `<option>${y} – ${y + 2}</option>`;
+    return out;
+  }
+  if(level === 'research'){      // no fixed duration: starting year only
+    let out = '';
+    for(let y = 2018; y < 2031; y++) out += `<option>${y} onwards</option>`;
+    return out;
+  }
+  return batchOptionsHTML();     // UG: unchanged 3-year ranges
+}
+const SEM_NAMES = ['Semester I','Semester II','Semester III','Semester IV','Semester V','Semester VI'];
+const YEAR_NAMES = ['Year I','Year II','Year III'];
+function setSelectKeep(sel, val){   // select a value; if it is not listed, add it so nothing saved is lost
+  if(!val){ sel.value = ''; return; }
+  if(![...sel.options].some(o => o.value === val)){
+    const o = document.createElement('option'); o.textContent = val; sel.appendChild(o);
+  }
+  sel.value = val;
+}
+function refreshLevelFields(){
+  const level = programmeLevel($('#fDept').value);
+  const sems  = level === 'pg' ? SEM_NAMES.slice(0, 4) : SEM_NAMES;
+  const years = level === 'pg' ? YEAR_NAMES.slice(0, 2) : YEAR_NAMES;
+  const cur = { b: $('#fBatch').value, s: $('#fSem').value, y: $('#fYear').value };
+  $('#fBatch').innerHTML = '<option value="">Select…</option>' + levelBatchHTML(level);
+  $('#fSem').innerHTML   = '<option value="">Select…</option>' + sems.map(x => `<option>${x}</option>`).join('');
+  $('#fYear').innerHTML  = '<option value="">Select…</option>' + years.map(x => `<option>${x}</option>`).join('');
+  [['#fBatch', cur.b], ['#fSem', cur.s], ['#fYear', cur.y]].forEach(([id, v]) => {
+    const sel = $(id);
+    if([...sel.options].some(o => o.value === v)) sel.value = v; else sel.value = '';
+  });
 }
 
 /* ---------- ICT tool catalogue ---------- */
@@ -1131,6 +1173,7 @@ function initCharts(d){
 }
 
 async function generateReport(){
+  if(!$('#fDept').value){ toast('Please select your School and Department in Faculty Details.', 'warn'); $('#fSchool').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   const entries = collect();
   if(!entries.length){ toast('Please add at least one ICT tool entry before generating the report.', 'warn'); return; }
 
@@ -1962,6 +2005,7 @@ $('#btnPulseGen').addEventListener('click', generateReport);
 async function quickSave(statusEl, btn){
   const fac = readFaculty();
   if(!fac.name){ toast('Enter the faculty name before saving progress.', 'warn'); return; }
+  if(!fac.dept){ toast('Please select your School and Department before saving.', 'warn'); return; }
   const entries = collect();
   const refl = {
     strengths: $('#rStrengths').value.trim(),
@@ -2112,8 +2156,11 @@ async function loadSavedReport(id){
     // change handler populates the department list, then set department.
     $('#fSchool').value = f.school || '';
     $('#fSchool').dispatchEvent(new Event('change'));
-    $('#fDept').value = f.dept || '';
-    $('#fBatch').value = f.batch || '';
+    setSelectKeep($('#fDept'), f.dept || '');
+    refreshLevelFields();
+    setSelectKeep($('#fBatch'), f.batch || '');
+    setSelectKeep($('#fSem'), f.sem || '');
+    setSelectKeep($('#fYear'), f.year || '');
 
     $('#rStrengths').value = (r.reflection || {}).strengths || '';
     $('#rChallenges').value = (r.reflection || {}).challenges || '';
@@ -2199,6 +2246,8 @@ async function loadSavedReport(id){
 injectCrests();
 populateSchoolDept();
 populateBatch();
+$('#fSchool').addEventListener('change', refreshLevelFields);
+$('#fDept').addEventListener('change', refreshLevelFields);
 addEntry();               // start with one ready entry
 updateLiveStats();
 </script>
