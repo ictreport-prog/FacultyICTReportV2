@@ -391,6 +391,16 @@ select{cursor:pointer}
   .sheet{box-shadow:none;border:none;max-width:100%;border-radius:0}
   @page{margin:8mm}
 }
+/* Logout / Exit */
+.logout-bar{max-width:1100px;margin:10px auto 0;padding:0 20px;text-align:center}
+.logout-bar p{font-size:.8rem;color:var(--muted);margin:0 0 10px}
+.btn-logout{background:var(--navy-700);color:#fff;border:0;padding:12px 26px}
+.btn-logout:hover{background:var(--navy-800)}
+.logout-screen{position:fixed;inset:0;z-index:9999;background:#fff;display:none;align-items:center;justify-content:center;text-align:center;padding:24px}
+.logout-screen.show{display:flex}
+.logout-screen h2{color:var(--navy-800);margin:0 0 8px}
+.logout-screen p{color:var(--muted);margin:0 0 18px}
+@media print{.logout-bar,.logout-screen{display:none!important}}
 </style>
 </head>
 <body>
@@ -545,7 +555,20 @@ select{cursor:pointer}
       <p>Fill in the sections above, add your ICT tool entries, then press <b>Generate Report</b>.</p>
     </div>
   </section>
+
+  <div class="logout-bar">
+    <p>Finished? Save your report first, then log out so nobody else can use this screen.</p>
+    <button class="btn btn-logout" id="btnLogout" type="button">⎋ Logout / Exit</button>
+  </div>
 </main>
+
+<div class="logout-screen" id="logoutScreen" role="dialog" aria-live="polite">
+  <div>
+    <h2>You have logged out safely ✔</h2>
+    <p>Thank you for completing your ICT Usage Report.<br>You may now close this tab.</p>
+    <button class="btn btn-ghost" id="btnLoginAgain" type="button">Start again</button>
+  </div>
+</div>
 
 <footer class="site-foot">
   <b>Guru Nanak College (Autonomous)</b> · Guru Nanak Campus, Velachery Road, Chennai – 600 042<br>
@@ -2246,6 +2269,16 @@ async function loadSavedReport(id){
 injectCrests();
 populateSchoolDept();
 populateBatch();
+$('#btnLogout').addEventListener('click', () => {
+  if(!confirm('Log out now?\n\nAnything you have not saved (use “Save to Database”) will be lost.')) return;
+  pinVerifiedEmpId = null;        // forget the confirmed PIN for this sitting
+  currentReportData = null; currentReportRef = null; reportReady = false;
+  document.querySelectorAll('input, select, textarea').forEach(el => { try{ el.value = ''; }catch(e){} });
+  $('#reportZone').innerHTML = '';
+  $('#logoutScreen').classList.add('show');
+  scrollTo(0, 0);
+});
+$('#btnLoginAgain').addEventListener('click', () => location.reload());
 $('#fSchool').addEventListener('change', refreshLevelFields);
 $('#fDept').addEventListener('change', refreshLevelFields);
 addEntry();               // start with one ready entry
