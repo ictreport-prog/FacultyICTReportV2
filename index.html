@@ -1227,6 +1227,7 @@ async function generateReport(){
       <button class="btn btn-ghost" id="btnPrint" type="button">🖨 Print</button>
       <button class="btn btn-save"  id="btnSave"  type="button">💾 ${currentReportRef ? 'Update Saved Report' : 'Save to Database'}</button>
       <button class="btn btn-gold"  id="btnPDF"   type="button">⬇ Download PDF</button>
+      <button class="btn btn-logout" id="btnLogout2" type="button">⎋ Logout / Exit</button>
     </div>
     <p id="saveStatus" class="save-status"></p>` + buildSheetHTML(data);
 
@@ -1235,6 +1236,7 @@ async function generateReport(){
   reportReady = true;
 
   $('#btnPDF').addEventListener('click', downloadPDF);
+  $('#btnLogout2').addEventListener('click', doLogout);
   $('#btnPrint').addEventListener('click', () => window.print());
   $('#btnRegen').addEventListener('click', generateReport);
   $('#btnSave').addEventListener('click', (ev) => { ev.preventDefault(); saveToDatabase(data); });
@@ -1279,12 +1281,14 @@ async function refreshWithFeedback(){
         <button class="btn btn-ghost" id="btnPrint" type="button">🖨 Print</button>
         <button class="btn btn-save"  id="btnSave"  type="button">💾 ${currentReportRef ? 'Update Saved Report' : 'Save to Database'}</button>
         <button class="btn btn-gold"  id="btnPDF"   type="button">⬇ Download PDF</button>
+        <button class="btn btn-logout" id="btnLogout2" type="button">⎋ Logout / Exit</button>
       </div>
       <p id="saveStatus" class="save-status"></p>` + buildSheetHTML(data);
     injectCrests();
     initCharts(data);
     reportReady = true;
     $('#btnPDF').addEventListener('click', downloadPDF);
+    $('#btnLogout2').addEventListener('click', doLogout);
     $('#btnPrint').addEventListener('click', () => window.print());
     $('#btnRegen').addEventListener('click', generateReport);
     $('#btnSave').addEventListener('click', (ev) => { ev.preventDefault(); saveToDatabase(data); });
@@ -2269,7 +2273,7 @@ async function loadSavedReport(id){
 injectCrests();
 populateSchoolDept();
 populateBatch();
-$('#btnLogout').addEventListener('click', () => {
+function doLogout(){
   if(!confirm('Log out now?\n\nAnything you have not saved (use “Save to Database”) will be lost.')) return;
   pinVerifiedEmpId = null;        // forget the confirmed PIN for this sitting
   currentReportData = null; currentReportRef = null; reportReady = false;
@@ -2277,7 +2281,8 @@ $('#btnLogout').addEventListener('click', () => {
   $('#reportZone').innerHTML = '';
   $('#logoutScreen').classList.add('show');
   scrollTo(0, 0);
-});
+}
+$('#btnLogout').addEventListener('click', doLogout);
 $('#btnLoginAgain').addEventListener('click', () => location.reload());
 $('#fSchool').addEventListener('change', refreshLevelFields);
 $('#fDept').addEventListener('change', refreshLevelFields);
