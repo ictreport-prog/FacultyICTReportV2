@@ -673,7 +673,7 @@ const SCHOOL_DEPTS = {
   'School of Humanities': ['B.A. Defence and Strategic Studies','B.A. Economics','B.A. Sociology','B.A. Political Science','M.A. Defence and Strategic Studies','M.A. Economics','M.Phil. Economics','Ph.D. Economics','Ph.D. Defence and Strategic Studies','Master of Social Work'],
   'School of Management': ['B.B.A.','B.B.A. Retail Management','B.Com Marketing Management','B.Com. Bank Management','M.B.A'],
   'School of Information Technology': ['B.C.A.','B.Sc. Computer Science','B.Sc. CS-AI','B.Sc. Data Analytics','B.Sc. Information Technology','B.Sc. Visual Communication','M.C.A.','M.Sc. CS-AI'],
-  'School of Commerce': ['B.Com. Accounting and Finance','B.Com. Computer Applications','B.Com. Corporate Secretaryship','B.Com. General','B.Com. Honours','B.Com. Information Systems Management','B.Com. Professional Accounting','M.Com. General'],
+  'School of Commerce': ['B.Com. Accounting and Finance','B.Com. Computer Applications','B.Com. Corporate Secretaryship','B.Com. General','B.Com. Honours','B.Com. Information Systems Management','B.Com. Professional Accounting','PG & Research Programme of Commerce'],
   'School of Sciences': ['B.Sc. Advanced Zoology','B.Sc. Biotechnology','B.Sc. Chemistry','B.Sc. Mathematics','B.Sc. Physics','B.Sc. Plant Biology','M.Sc. Chemistry','M.Sc. Mathematics','M.Sc. Zoology'],
   'School of Languages': ['B.A. English','English','French','Hindi','Sanskrit','Tamil']
 };
@@ -697,11 +697,13 @@ function batchOptionsHTML(){
 
 /* ---------- Programme level (UG / PG / Research) -> Batch, Semester, Year ---------- */
 function programmeLevel(dept){
+  if(/^PG & Research/i.test(dept)) return 'mixed';   // M.Com and research scholars share one entry
   if(/^(M\.Phil\.|Ph\.D\.)/i.test(dept)) return 'research';
   if(/^(M\.A\.|M\.Sc\.|M\.Com|M\.B\.A|M\.C\.A|Master of)/i.test(dept)) return 'pg';
   return 'ug';
 }
 function levelBatchHTML(level){
+  if(level === 'mixed') return levelBatchHTML('pg') + levelBatchHTML('research');   // 2-year ranges, then starting years
   if(level === 'pg'){            // 2-year master's programmes
     let out = '';
     for(let y = 2022; y < 2031; y++) out += `<option>${y} – ${y + 2}</option>`;
@@ -723,6 +725,13 @@ function setSelectKeep(sel, val){   // select a value; if it is not listed, add 
   }
   sel.value = val;
 }
+function applySemesterRule(){       // research scholars have no semesters
+  const level = programmeLevel($('#fDept').value);
+  const na = level === 'research' || (level === 'mixed' && /onwards$/.test($('#fBatch').value));
+  const sem = $('#fSem');
+  if(na) sem.value = '';
+  sem.disabled = na;
+}
 function refreshLevelFields(){
   const level = programmeLevel($('#fDept').value);
   const sems  = level === 'pg' ? SEM_NAMES.slice(0, 4) : SEM_NAMES;
@@ -735,6 +744,7 @@ function refreshLevelFields(){
     const sel = $(id);
     if([...sel.options].some(o => o.value === v)) sel.value = v; else sel.value = '';
   });
+  applySemesterRule();
 }
 
 /* ---------- ICT tool catalogue ---------- */
@@ -957,7 +967,7 @@ function readFaculty(){
     empId: empNum ? 'EMPTS' + empNum : '',
     name: $('#fName').value.trim(), shift: $('#fShift').value.trim(), school: $('#fSchool').value.trim(), dept: $('#fDept').value.trim(),
     course: $('#fCourse').value.trim(), code: $('#fCode').value.trim(),
-    batch: $('#fBatch').value.trim(), sem: $('#fSem').value,
+    batch: $('#fBatch').value.trim(), sem: $('#fSem').disabled ? 'Not applicable' : $('#fSem').value,
     year: $('#fYear').value, ay: $('#fAY').value
   };
 }
@@ -2186,8 +2196,9 @@ async function loadSavedReport(id){
     setSelectKeep($('#fDept'), f.dept || '');
     refreshLevelFields();
     setSelectKeep($('#fBatch'), f.batch || '');
-    setSelectKeep($('#fSem'), f.sem || '');
+    setSelectKeep($('#fSem'), f.sem === 'Not applicable' ? '' : (f.sem || ''));
     setSelectKeep($('#fYear'), f.year || '');
+    applySemesterRule();
 
     $('#rStrengths').value = (r.reflection || {}).strengths || '';
     $('#rChallenges').value = (r.reflection || {}).challenges || '';
@@ -2286,6 +2297,7 @@ $('#btnLogout').addEventListener('click', doLogout);
 $('#btnLoginAgain').addEventListener('click', () => location.reload());
 $('#fSchool').addEventListener('change', refreshLevelFields);
 $('#fDept').addEventListener('change', refreshLevelFields);
+$('#fBatch').addEventListener('change', applySemesterRule);
 addEntry();               // start with one ready entry
 updateLiveStats();
 </script>
