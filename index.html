@@ -453,6 +453,7 @@ select{cursor:pointer}
           <div><h2>Faculty Details</h2><p>Basic information about the faculty member and the session.</p></div>
           <div class="sec-actions">
             <span class="save-status" id="qsStatus1"></span>
+            <button class="btn btn-ghost" id="btnNewSubject" type="button">＋ New Subject</button>
             <button class="btn btn-ghost" id="btnQuickSave1" type="button">💾 Save Progress</button>
           </div>
         </div>
@@ -783,6 +784,14 @@ let barChart = null, pieChart = null, reportReady = false;
    without re-collecting the form. */
 let currentReportRef = null;
 let currentReportData = null;
+/* ---------- duplicate-subject protection (added) ----------
+   loadedSubjectKey: identity (course | code | batch | academic year) of the
+   report currently open in this sitting. Used to notice when the form has
+   been switched to a different subject, and to spot an already-saved one. */
+let loadedSubjectKey = null;
+const reportSubjectKey = f => [f && f.course, f && f.code, f && f.batch, f && f.ay]
+  .map(v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')).join('|');
+const keyIsBlank = k => !k || !k.replace(/\|/g, '');
 // Employee ID whose PIN has already been confirmed correct once this page
 // load — so someone doesn't get re-prompted on every single save/search
 // for the same ID within one sitting. Cleared on page reload only.
@@ -1549,14 +1558,63 @@ async function saveToDatabase(data, opts = {}){
     // loaded via "Load a Saved Report"), update that same document instead
     // of creating a new one — otherwise every re-save after collecting
     // feedback would duplicate the record in the admin dashboard and CSV.
+    // (added) If the Course Title / Code / Batch / Academic Year no longer match
+    // the report that is open, this is a different subject — never silently
+    // overwrite the earlier one.
+    if(currentReportRef && !keyIsBlank(loadedSubjectKey) && reportSubjectKey(data.fac) !== loadedSubjectKey){
+      const asNew = confirm('The Course Title, Course Code, Batch or Academic Year is different from the report you have open.\n\nPress OK to save this as a NEW subject report (the earlier report stays unchanged).\nPress Cancel for other options.');
+      if(asNew){
+        currentReportRef = null; loadedSubjectKey = null;
+        $$('#entries .entry').forEach(el => { el.dataset.entryId = ''; });
+        data.entries.forEach(e => { e.entryId = null; });
+      } else {
+        const justFix = confirm('Are you only CORRECTING the earlier report (for example a spelling mistake)?\n\nPress OK to update the earlier report with these changes.\nPress Cancel to stop — nothing will be saved.');
+        if(!justFix){
+          if(statusEl){ statusEl.textContent = 'Save cancelled — nothing was changed.'; statusEl.classList.add('warn'); }
+          return;
+        }
+      }
+    }
+
+    // (added) About to create a NEW report: warn if this Employee ID already
+    // has a saved report for the same subject, instead of creating a duplicate.
+    // If the check cannot run (e.g. poor connection) saving carries on as before.
+    if(!currentReportRef && data.fac && data.fac.empId && !keyIsBlank(reportSubjectKey(data.fac))){
+      let existing = null;
+      try {
+        const wanted = reportSubjectKey(data.fac);
+        const lookup = db.collection('facultyICTReports').where('faculty.empId', '==', data.fac.empId).limit(100).get();
+        const dupSnap = await Promise.race([lookup, new Promise(res => setTimeout(() => res(null), 8000))]);
+        if(dupSnap){
+          dupSnap.forEach(d => { if(!existing && reportSubjectKey((d.data() || {}).faculty) === wanted) existing = d; });
+        }
+      } catch(err){ console.warn('Duplicate-subject check skipped:', err); }
+      if(existing){
+        const ex = existing.data() || {};
+        const when = ex.submittedAt && ex.submittedAt.toDate
+          ? ex.submittedAt.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+          : 'an earlier date';
+        const msg = 'A report for this subject is already saved under your Employee ID:\n\n' +
+          '“' + (data.fac.course || 'Untitled course') + '” ' + (data.fac.code ? '(' + data.fac.code + ') ' : '') + '— saved ' + when + '.\n\n' +
+          'It was NOT saved again, so no duplicate was created.\n' +
+          '• To change that report, open it from “Find My Reports” and update it.\n' +
+          '• For a different subject, change the Course Title / Code (use “New Subject” to start a clean form).';
+        if(statusEl){ statusEl.textContent = 'Not saved — this subject already exists. Open it from “Find My Reports”.'; statusEl.classList.add('err'); }
+        toast('This subject is already saved — nothing was duplicated.', 'warn');
+        alert(msg);
+        return;
+      }
+    }
+
     const isUpdate = !!currentReportRef;
     const reportRef = currentReportRef || db.collection('facultyICTReports').doc();
 
-    // Reuse each entry's existing entryId (so already-shared feedback links
-    // keep working and their responses stay linked) — only entries that
-    // have never been saved before get a fresh id.
+    // Reuse each entry's existing entryId when UPDATING the same report (so
+    // already-shared feedback links keep working and their responses stay
+    // linked). A brand-new report always gets fresh ids (changed), so two
+    // reports can never end up sharing the same feedback entries.
     const entryRefs = data.entries.map(e =>
-      e.entryId ? db.collection('ictEntries').doc(e.entryId) : db.collection('ictEntries').doc()
+      (isUpdate && e.entryId) ? db.collection('ictEntries').doc(e.entryId) : db.collection('ictEntries').doc()
     );
 
     // Compress any newly-picked screenshot/photo files before writing —
@@ -1624,6 +1682,7 @@ async function saveToDatabase(data, opts = {}){
     // entryIds back onto the entry data and their DOM elements so a later
     // "Refresh with Feedback" or re-save knows which Firestore docs to use.
     currentReportRef = reportRef;
+    loadedSubjectKey = reportSubjectKey(data.fac);
     data.entries.forEach((e, i) => {
       e.entryId = entryRefs[i].id;
       if(e.el) e.el.dataset.entryId = entryRefs[i].id;
@@ -2165,6 +2224,7 @@ async function loadSavedReport(id){
     if(!snap.exists){ toast('That report could not be found — it may have been deleted.', 'warn'); return; }
     const r = snap.data();
     currentReportRef = db.collection('facultyICTReports').doc(id);
+    loadedSubjectKey = reportSubjectKey(r.faculty);
     currentReportData = null;
 
     // Image bytes live on each entry's own ictEntries document, not on the
@@ -2287,13 +2347,34 @@ populateBatch();
 function doLogout(){
   if(!confirm('Log out now?\n\nAnything you have not saved (use “Save to Database”) will be lost.')) return;
   pinVerifiedEmpId = null;        // forget the confirmed PIN for this sitting
-  currentReportData = null; currentReportRef = null; reportReady = false;
+  currentReportData = null; currentReportRef = null; reportReady = false; loadedSubjectKey = null;
   document.querySelectorAll('input, select, textarea').forEach(el => { try{ el.value = ''; }catch(e){} });
   $('#reportZone').innerHTML = '';
   $('#logoutScreen').classList.add('show');
   scrollTo(0, 0);
 }
 $('#btnLogout').addEventListener('click', doLogout);
+
+/* ---------- start a clean form for a different subject (added) ----------
+   Keeps who the faculty member is (ID, name, shift, school, department,
+   academic year); clears everything belonging to the previous subject and
+   forgets the open report, so the next save always creates a NEW report. */
+const EMPTY_REPORT_HTML = $('#reportZone').innerHTML;
+function startNewSubject(){
+  if(!confirm('Start a NEW subject?\n\nYour Employee ID, name, shift, school, department and academic year stay filled in. Course details, ICT tool entries and reflection are cleared.\n\nMake sure the previous subject has been saved first.')) return;
+  currentReportData = null; currentReportRef = null; reportReady = false; loadedSubjectKey = null;
+  ['#fCourse', '#fCode', '#fBatch', '#fSem', '#fYear', '#rStrengths', '#rChallenges', '#rImprovements'].forEach(sel => {
+    const el = $(sel); if(el){ try{ el.value = ''; }catch(e){} }
+  });
+  applySemesterRule();
+  $('#entries').innerHTML = ''; fileStore.clear(); uid = 0; addEntry();
+  $('#reportZone').innerHTML = EMPTY_REPORT_HTML;
+  document.querySelectorAll('.save-status').forEach(el => { el.textContent = ''; el.className = 'save-status'; });
+  updateLiveStats();
+  toast('New subject started — enter the Course Title and Code.');
+  $('#fCourse').focus();
+}
+$('#btnNewSubject').addEventListener('click', startNewSubject);
 $('#btnLoginAgain').addEventListener('click', () => location.reload());
 $('#fSchool').addEventListener('change', refreshLevelFields);
 $('#fDept').addEventListener('change', refreshLevelFields);
