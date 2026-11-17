@@ -785,12 +785,25 @@ let barChart = null, pieChart = null, reportReady = false;
 let currentReportRef = null;
 let currentReportData = null;
 /* ---------- duplicate-subject protection (added) ----------
-   loadedSubjectKey: identity (course | code | batch | academic year) of the
+   loadedSubjectKey: identity (course code | batch | academic year) of the
    report currently open in this sitting. Used to notice when the form has
    been switched to a different subject, and to spot an already-saved one. */
 let loadedSubjectKey = null;
-const reportSubjectKey = f => [f && f.course, f && f.code, f && f.batch, f && f.ay]
-  .map(v => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')).join('|');
+/* Subject identity = Course Code + Batch + Academic Year. The Course Title is
+   left out on purpose so a typo or re-wording in the title can never turn the
+   same subject into a "different" one. Only when no code was entered does the
+   title stand in for it. Spaces, dashes and case are ignored. */
+const _subjNorm = v => String(v || '').trim().toLowerCase().replace(/\s*[\u2013\u2014-]\s*/g, '-').replace(/\s+/g, ' ');
+const reportSubjectKey = f => {
+  if(!f) return '';
+  const code = String(f.code || '').toLowerCase().replace(/[\s\-_.]+/g, '');
+  return [code || _subjNorm(f.course), _subjNorm(f.batch), _subjNorm(f.ay)].join('|');
+};
+/* Firestore document id for a subject's record: Employee ID + the key above.
+   A new report is written under this id inside a transaction, so the database
+   itself refuses a second record for the same subject (even from two tabs). */
+const _slug = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const subjectDocId = f => [f.empId].concat(reportSubjectKey(f).split('|')).map(_slug).join('__');
 const keyIsBlank = k => !k || !k.replace(/\|/g, '');
 // Employee ID whose PIN has already been confirmed correct once this page
 // load — so someone doesn't get re-prompted on every single save/search
@@ -1576,38 +1589,53 @@ async function saveToDatabase(data, opts = {}){
       }
     }
 
-    // (added) About to create a NEW report: warn if this Employee ID already
-    // has a saved report for the same subject, instead of creating a duplicate.
-    // If the check cannot run (e.g. poor connection) saving carries on as before.
-    if(!currentReportRef && data.fac && data.fac.empId && !keyIsBlank(reportSubjectKey(data.fac))){
+    // Duplicate-subject check. Runs for a NEW report, and also when an open
+    // report has been changed to a different subject (even if the person says
+    // they are only "correcting" it) — in that case the report being edited
+    // is left out of the comparison. If the check cannot complete, the save is
+    // stopped rather than risk a duplicate.
+    const subjKey = data.fac ? reportSubjectKey(data.fac) : '';
+    const needsDupCheck = data.fac && data.fac.empId && !keyIsBlank(subjKey) &&
+      (!currentReportRef || subjKey !== loadedSubjectKey);
+    if(needsDupCheck){
       let existing = null;
       try {
-        const wanted = reportSubjectKey(data.fac);
-        const lookup = db.collection('facultyICTReports').where('faculty.empId', '==', data.fac.empId).limit(100).get();
-        const dupSnap = await Promise.race([lookup, new Promise(res => setTimeout(() => res(null), 8000))]);
-        if(dupSnap){
-          dupSnap.forEach(d => { if(!existing && reportSubjectKey((d.data() || {}).faculty) === wanted) existing = d; });
-        }
-      } catch(err){ console.warn('Duplicate-subject check skipped:', err); }
+        const lookup = db.collection('facultyICTReports').where('faculty.empId', '==', data.fac.empId).limit(300).get();
+        const dupSnap = await Promise.race([lookup, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))]);
+        dupSnap.forEach(d => {
+          if(existing) return;
+          if(currentReportRef && d.id === currentReportRef.id) return;
+          if(reportSubjectKey((d.data() || {}).faculty) === subjKey) existing = d;
+        });
+      } catch(err){
+        console.warn('Duplicate-subject check failed:', err);
+        if(statusEl){ statusEl.textContent = 'Not saved — could not check for an existing report for this subject (connection problem). Please try again.'; statusEl.classList.add('err'); }
+        toast('Could not verify this subject — nothing was saved. Try again.', 'warn');
+        return;
+      }
       if(existing){
-        const ex = existing.data() || {};
+        const ex = existing.data() || {}, exf = ex.faculty || {};
         const when = ex.submittedAt && ex.submittedAt.toDate
           ? ex.submittedAt.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
           : 'an earlier date';
         const msg = 'A report for this subject is already saved under your Employee ID:\n\n' +
-          '“' + (data.fac.course || 'Untitled course') + '” ' + (data.fac.code ? '(' + data.fac.code + ') ' : '') + '— saved ' + when + '.\n\n' +
+          '\u201c' + (exf.course || data.fac.course || 'Untitled course') + '\u201d ' + (exf.code ? '(' + exf.code + ') ' : '') +
+          '\u2014 Batch ' + (exf.batch || '-') + ', ' + (exf.ay || '-') + ' \u2014 saved ' + when + '.\n\n' +
           'It was NOT saved again, so no duplicate was created.\n' +
-          '• To change that report, open it from “Find My Reports” and update it.\n' +
-          '• For a different subject, change the Course Title / Code (use “New Subject” to start a clean form).';
-        if(statusEl){ statusEl.textContent = 'Not saved — this subject already exists. Open it from “Find My Reports”.'; statusEl.classList.add('err'); }
-        toast('This subject is already saved — nothing was duplicated.', 'warn');
+          '\u2022 To change that report, open it from \u201cFind My Reports\u201d and update it.\n' +
+          '\u2022 For a different subject, change the Course Code, Batch or Academic Year (use \u201cNew Subject\u201d to start a clean form).';
+        if(statusEl){ statusEl.textContent = 'Not saved \u2014 this subject already exists. Open it from \u201cFind My Reports\u201d.'; statusEl.classList.add('err'); }
+        toast('This subject is already saved \u2014 nothing was duplicated.', 'warn');
         alert(msg);
         return;
       }
     }
 
     const isUpdate = !!currentReportRef;
-    const reportRef = currentReportRef || db.collection('facultyICTReports').doc();
+    const reportRef = currentReportRef || (
+      (data.fac && data.fac.empId && !keyIsBlank(reportSubjectKey(data.fac)))
+        ? db.collection('facultyICTReports').doc(subjectDocId(data.fac))
+        : db.collection('facultyICTReports').doc());
 
     // Reuse each entry's existing entryId when UPDATING the same report (so
     // already-shared feedback links keep working and their responses stay
@@ -1651,8 +1679,7 @@ async function saveToDatabase(data, opts = {}){
     // the admin dashboard's date column and sort order meaningful.
     if(!isUpdate) record.submittedAt = firebase.firestore.FieldValue.serverTimestamp();
 
-    const batch = db.batch();
-    batch.set(reportRef, record, { merge: true });
+    const writes = [{ ref: reportRef, data: record }];
     data.entries.forEach((e, i) => {
       const entryPayload = { reportId: reportRef.id, tool: e.tool, faculty: data.fac.name || null };
       if(!e.entryId) entryPayload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -1670,13 +1697,23 @@ async function saveToDatabase(data, opts = {}){
         entryPayload.docThumbData = e.docThumbForSave;
         entryPayload.docThumbFileName = e.doc ? e.doc.name : null;
       }
-      batch.set(entryRefs[i], entryPayload, { merge: true });
+      writes.push({ ref: entryRefs[i], data: entryPayload });
     });
 
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Timed out after 15 seconds — the network may be blocking the database connection.')), 15000)
     );
-    await Promise.race([ batch.commit(), timeout ]);
+    // Updating an existing report: a plain batched write. Creating a new one:
+    // a transaction that refuses to go ahead if a record for this subject
+    // already exists, so two tabs/devices can never both create it.
+    const commitAll = isUpdate
+      ? (() => { const batch = db.batch(); writes.forEach(w => batch.set(w.ref, w.data, { merge: true })); return batch.commit(); })()
+      : db.runTransaction(async tx => {
+          const snap = await tx.get(reportRef);
+          if(snap.exists) throw new Error('DUPLICATE_SUBJECT');
+          writes.forEach(w => tx.set(w.ref, w.data, { merge: true }));
+        });
+    await Promise.race([ commitAll, timeout ]);
 
     // Remember this report for future saves/refreshes, and stamp the new
     // entryIds back onto the entry data and their DOM elements so a later
@@ -1716,6 +1753,13 @@ async function saveToDatabase(data, opts = {}){
     }
     if(btn && btn.id === 'btnSave') btn.textContent = '💾 Update Saved Report';
   } catch (e) {
+    if(e && e.message === 'DUPLICATE_SUBJECT'){
+      const m = 'This subject already has a saved report under your Employee ID, so nothing was saved again. Open it from \u201cFind My Reports\u201d to update it.';
+      if(statusEl){ statusEl.textContent = 'Not saved \u2014 this subject already exists.'; statusEl.classList.add('err'); }
+      toast('This subject is already saved \u2014 nothing was duplicated.', 'warn');
+      alert(m);
+      return;
+    }
     if(statusEl){
       statusEl.textContent = 'Save failed: ' + e.message;
       statusEl.classList.add('err');
